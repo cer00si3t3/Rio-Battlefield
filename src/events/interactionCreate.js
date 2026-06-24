@@ -252,6 +252,52 @@ export default {
             }
           }
         } else if (interaction.isButton()) {
+          if (interaction.customId.startsWith('verify_')) {
+
+  const member = interaction.member;
+
+  const isStaff =
+    member.roles.cache.has(MOD_ROLE) ||
+    member.roles.cache.has(HOST_ROLE);
+
+    if (!isStaff) {
+      return interaction.reply({
+        content: "❌ No permission.",
+        flags: MessageFlags.Ephemeral
+      });
+  }
+
+    return; // ✅ IMPORTANT SAFETY STOP
+  }
+if (interaction.customId.startsWith('verify_approve_')) {
+  
+    const parts = interaction.customId.split('_');
+    const userId = parts[2];
+    const gamertag = parts.slice(3).join('_');
+
+    const guildMember = await interaction.guild.members.fetch(userId);
+
+    await guildMember.setNickname(gamertag);
+    await guildMember.roles.add(VERIFIED_ROLE);
+
+    return interaction.reply({
+      content: `✅ Verified <@${userId}>`,
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  if (interaction.customId.startsWith('verify_deny_')) {
+
+    const userId = interaction.customId.split('_')[2];
+
+    return interaction.reply({
+      content: `❌ Denied <@${userId}>`,
+      flags: MessageFlags.Ephemeral
+    });
+ }
+
+    return;
+  }
           if (interaction.customId.startsWith('shared_todo_')) {
             const parts = interaction.customId.split('_');
             const buttonType = parts.slice(0, 3).join('_');
@@ -330,6 +376,60 @@ export default {
             }, interactionTraceContext));
           }
         } else if (interaction.isModalSubmit()) {
+
+  if (interaction.customId.startsWith('verify_modal_')) {
+
+    const gamertag = interaction.fields.getTextInputValue('gamertag');
+    const user = interaction.user;
+
+    try {
+      const channel = await client.channels.fetch(VERIFY_LOGS);
+
+      const embed = {
+        title: "🧾 Verification Request",
+        color: 0x2ecc71,
+        fields: [
+          { name: "User", value: `<@${user.id}>` },
+          { name: "Discord ID", value: user.id },
+          { name: "Gamertag", value: gamertag }
+        ]
+      };
+
+      const row = {
+        type: 1,
+        components: [
+          {
+            type: 2,
+            style: 3,
+            label: "Approve",
+            custom_id: `verify_approve_${user.id}_${gamertag}`
+          },
+          {
+            type: 2,
+            style: 4,
+            label: "Deny",
+            custom_id: `verify_deny_${user.id}`
+          }
+        ]
+      };
+
+      await channel.send({
+        embeds: [embed],
+        components: [row]
+      });
+
+      return interaction.reply({
+        content: "✅ Sent for approval.",
+        flags: MessageFlags.Ephemeral
+      });
+
+    } catch (err) {
+      return interaction.reply({
+        content: "❌ Failed to send verification request.",
+        flags: MessageFlags.Ephemeral
+      });
+    }
+  }
           if (interaction.customId.startsWith('app_modal_')) {
             try {
               await handleApplicationModal(interaction);
@@ -337,6 +437,7 @@ export default {
               await handleInteractionError(interaction, error, withTraceContext({
                 type: 'modal',
                 customId: interaction.customId,
+                
                 handler: 'application'
               }, interactionTraceContext));
             }
