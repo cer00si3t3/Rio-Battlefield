@@ -1,4 +1,8 @@
 import { Events, MessageFlags } from 'discord.js';
+const VERIFY_LOGS = '1518710439100420226';
+const VERIFIED_ROLE = '1518428677291901118';
+const MOD_ROLE = '1518427848061354044';
+const HOST_ROLE = '1518428437092761641';
 import { logger } from '../utils/logger.js';
 import { getGuildConfig } from '../services/guildConfig.js';
 import { handleApplicationModal } from '../commands/Community/apply.js';
