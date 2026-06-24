@@ -251,24 +251,61 @@ export default {
               await interaction.respond([]);
             }
           }
-        } else if (interaction.isButton()) {
-          if (interaction.customId.startsWith('verify_')) {
+        if (interaction.isButton()) {
+  if (interaction.customId.startsWith('verify_')) {
+    try {
+      await interaction.deferReply({ ephemeral: true });
 
-  const member = interaction.member;
+      // Always fetch fresh member (avoids crashes)
+      const member = await interaction.guild.members.fetch(interaction.user.id);
 
-  const isStaff =
-    member.roles.cache.has(MOD_ROLE) ||
-    member.roles.cache.has(HOST_ROLE);
+      const isStaff =
+        member.roles.cache.has(MOD_ROLE) ||
+        member.roles.cache.has(HOST_ROLE);
 
-    if (!isStaff) {
-      return interaction.reply({
-        content: "❌ No permission.",
-        flags: MessageFlags.Ephemeral
-      });
+      if (!isStaff) {
+        return interaction.editReply("❌ No permission.");
+      }
+
+      // =====================
+      // APPROVE
+      // =====================
+      if (interaction.customId.startsWith('verify_approve_')) {
+        const parts = interaction.customId.split('_');
+        const userId = parts[2];
+        const gamertag = parts.slice(3).join('_');
+
+        const target = await interaction.guild.members.fetch(userId);
+
+        await target.setNickname(gamertag).catch(() => {});
+        await target.roles.add(VERIFIED_ROLE).catch(() => {});
+
+        return interaction.editReply(`✅ Verified <@${userId}>`);
+      }
+
+      // =====================
+      // DENY
+      // =====================
+      if (interaction.customId.startsWith('verify_deny_')) {
+        const userId = interaction.customId.split('_')[2];
+
+        return interaction.editReply(`❌ Denied <@${userId}>`);
+      }
+
+    } catch (err) {
+      console.error("VERIFY BUTTON ERROR:", err);
+
+      if (!interaction.replied && !interaction.deferred) {
+        return interaction.reply({
+          content: "❌ Verification failed due to an error.",
+          flags: MessageFlags.Ephemeral
+        });
+      }
+    }
+
+    return;
   }
-
-    return; // ✅ IMPORTANT SAFETY STOP
-  }
+}
 if (interaction.customId.startsWith('verify_approve_')) {
   
     const parts = interaction.customId.split('_');
@@ -375,15 +412,19 @@ if (interaction.customId.startsWith('verify_approve_')) {
               customId: interaction.customId
             }, interactionTraceContext));
           }
-        } else if (interaction.isModalSubmit()) {
-
+       if (interaction.isModalSubmit()) {
   if (interaction.customId.startsWith('verify_modal_')) {
-
-    const gamertag = interaction.fields.getTextInputValue('gamertag');
-    const user = interaction.user;
-
     try {
+      await interaction.deferReply({ ephemeral: true });
+
+      const gamertag = interaction.fields.getTextInputValue('gamertag');
+      const user = interaction.user;
+
       const channel = await client.channels.fetch(VERIFY_LOGS);
+
+      if (!channel) {
+        return interaction.editReply("❌ Log channel not found.");
+      }
 
       const embed = {
         title: "🧾 Verification Request",
@@ -418,18 +459,19 @@ if (interaction.customId.startsWith('verify_approve_')) {
         components: [row]
       });
 
-      return interaction.reply({
-        content: "✅ Sent for approval.",
-        flags: MessageFlags.Ephemeral
-      });
+      return interaction.editReply("✅ Sent for approval.");
 
     } catch (err) {
+      console.error("VERIFY MODAL ERROR:", err);
       return interaction.reply({
         content: "❌ Failed to send verification request.",
         flags: MessageFlags.Ephemeral
       });
     }
   }
+
+  // keep your other modal handlers below this
+}
           if (interaction.customId.startsWith('app_modal_')) {
             try {
               await handleApplicationModal(interaction);
