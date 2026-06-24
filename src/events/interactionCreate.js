@@ -312,7 +312,16 @@ if (interaction.customId.startsWith('verify_approve_')) {
     const userId = parts[2];
     const gamertag = parts.slice(3).join('_');
 
-    const guildMember = await interaction.guild.members.fetch(userId);
+    const guildMember =
+  interaction.guild.members.cache.get(userId) ||
+  await interaction.guild.members.fetch(userId).catch(() => null);
+
+if (!guildMember) {
+  return interaction.reply({
+    content: "❌ User not found in server.",
+    flags: MessageFlags.Ephemeral
+  });
+}
 
     await guildMember.setNickname(gamertag);
     await guildMember.roles.add(VERIFIED_ROLE);
@@ -420,8 +429,8 @@ if (interaction.customId.startsWith('verify_approve_')) {
       const gamertag = interaction.fields.getTextInputValue('gamertag');
       const user = interaction.user;
 
-      const channel = await client.channels.fetch(VERIFY_LOGS);
-
+     const channel = client.channels.cache.get(VERIFY_LOGS);
+      
       if (!channel) {
         return interaction.editReply("❌ Log channel not found.");
       }
